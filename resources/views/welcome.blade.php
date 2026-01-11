@@ -20,7 +20,7 @@
                         S
                     </div>
                     <div>
-                        <h1 class="font-bold text-xl tracking-tight text-gray-900">SI-KADER</h1>
+                        <h1 class="font-bold text-xl tracking-tight text-gray-900">SIKUT</h1>
                         <p class="text-[10px] font-bold text-emerald-600 tracking-widest uppercase">IPNU IPPNU Garut</p>
                     </div>
                 </div>
