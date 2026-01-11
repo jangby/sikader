@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OtpMail;
 use Illuminate\Support\Facades\DB; // Untuk Database Transaction
-use App\Models\UserProfile;
+use App\Models\Profile;
 use App\Models\Registration;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver; // Driver Gambar
@@ -162,30 +162,35 @@ class PublicEventController extends Controller
     }
 
     // 6. PROSES SIMPAN BIODATA & UPLOAD
+    // Pastikan Anda sudah import model Profile di bagian atas file controller:
+    // use App\Models\Profile; 
+
     public function processBiodata(Request $request, Event $event)
     {
-
-        
-        
-        // A. Validasi Input
+        // A. Validasi Input Dasar
         $rules = [
-            'tempat_lahir' => 'required|string',
-            'tanggal_lahir'=> 'required|date',
-            'alamat'       => 'required|string',
-            'rt'           => 'required|string',
-            'rw'           => 'required|string',
-            'desa'         => 'required|string',
-            'kecamatan'    => 'required|string',
-            'kabupaten'    => 'required|string',
-            'asal_delegasi'=> 'required|string',
-            'ukuran_baju'  => 'required|string|in:S,M,L,XL,XXL,XXXL',
+            'jenis_kelamin' => 'required|string|in:Laki-laki,Perempuan',
+            'tempat_lahir'  => 'required|string',
+            'tanggal_lahir' => 'required|date',
+            'alamat'        => 'required|string',
+            'rt'            => 'required|string',
+            'rw'            => 'required|string',
+            'desa'          => 'required|string',
+            'kecamatan'     => 'required|string',
+            'kabupaten'     => 'required|string',
+            'asal_delegasi' => 'required|string',
+            'ukuran_baju'   => 'required|string|in:S,M,L,XL,XXL,XXXL',
         ];
+
+        // LOGIKA BARU: Validasi Pembayaran (Hanya Jika Berbayar)
+        if ($event->biaya > 0) {
+            $rules['bukti_pembayaran'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:2048'; // Max 2MB
+        }
 
         // Validasi Dokumen Dinamis (Sesuai Config Event)
         if (!empty($event->config_dokumen)) {
             foreach ($event->config_dokumen as $index => $doc) {
                 if ($doc['wajib']) {
-                    // dokumen.0, dokumen.1, dst
                     $rules["dokumen.$index"] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'; // Max 5MB
                 } else {
                     $rules["dokumen.$index"] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
@@ -198,11 +203,12 @@ class PublicEventController extends Controller
         DB::transaction(function () use ($request, $event) {
             $user = Auth::user();
 
-            // B. Simpan/Update Profil User
-            UserProfile::updateOrCreate(
+            // B. Simpan/Update Profil User (GUNAKAN MODEL Profile)
+            // Fix: Menggunakan Profile::updateOrCreate agar sinkron dengan data User
+            Profile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'nama_lengkap'  => $user->name, // Ambil dari user table
+                    'nama_lengkap'  => $user->name, 
                     'no_hp'         => $user->no_hp,
                     'jenis_kelamin' => $request->jenis_kelamin,
                     'tempat_lahir'  => $request->tempat_lahir,
@@ -217,11 +223,9 @@ class PublicEventController extends Controller
                 ]
             );
 
-            // C. Proses Upload Dokumen & Kompresi
+            // C. Proses Upload Dokumen Persyaratan & Kompresi
             $dataDokumen = [];
-            
-            // Siapkan Manager Gambar (Intervention Image v3)
-            $manager = new ImageManager(new Driver());
+            $manager = new ImageManager(new Driver()); // Intervention Image
 
             if ($request->hasFile('dokumen')) {
                 foreach ($request->file('dokumen') as $index => $file) {
@@ -233,23 +237,17 @@ class PublicEventController extends Controller
                     $filename  = Str::slug($user->name) . '-' . Str::slug($namaDoc) . '-' . time() . '.' . $extension;
                     $path      = 'documents/' . $event->id . '/' . $filename;
 
-                    // Cek Tipe File
+                    // Cek Tipe File untuk Kompresi
                     if (in_array(strtolower($extension), ['jpg', 'jpeg', 'png'])) {
-                        // JIKA GAMBAR: Kompres!
-                        // Baca gambar
+                        // Kompres Gambar
                         $image = $manager->read($file);
-                        
-                        // Resize jika lebar > 1000px (biar tidak terlalu besar dimensinya)
                         if ($image->width() > 1200) {
                             $image->scale(width: 1200);
                         }
-
-                        // Simpan ke Storage dengan kualitas 75%
-                        // Kita encode ulang jadi file stream
                         $encoded = $image->toJpeg(quality: 75); 
                         Storage::disk('public')->put($path, $encoded);
                     } else {
-                        // JIKA PDF: Simpan biasa (tidak bisa dikompres library image)
+                        // PDF simpan biasa
                         Storage::disk('public')->putFileAs('documents/' . $event->id, $file, $filename);
                     }
 
@@ -258,17 +256,98 @@ class PublicEventController extends Controller
                 }
             }
 
-            // D. Buat Registrasi Event
+            // LOGIKA BARU: Upload Bukti Pembayaran
+            $buktiBayarPath = null;
+            if ($event->biaya > 0 && $request->hasFile('bukti_pembayaran')) {
+                $file = $request->file('bukti_pembayaran');
+                $filename = 'payment-' . $user->id . '-' . time() . '.' . $file->getClientOriginalExtension();
+                
+                // Simpan di folder public/payments/{event_id}
+                $buktiBayarPath = $file->storeAs('payments/' . $event->id, $filename, 'public');
+            }
+
+            // D. Tentukan Status Awal
+            // Jika biaya > 0, status 'pending' (tunggu verifikasi admin)
+            // Jika biaya 0 (gratis), status langsung 'verified' (lulus administrasi)
+            $initialStatus = ($event->biaya > 0) ? 'pending' : 'verified';
+
+            // E. Buat Registrasi Event
             Registration::create([
-                'user_id'       => $user->id,
-                'event_id'      => $event->id,
-                'status'        => 'pending', // Menunggu pembayaran/verifikasi
-                'ukuran_baju'   => $request->ukuran_baju,
-                'data_dokumen'  => $dataDokumen, // Simpan JSON path dokumen
+                'user_id'          => $user->id,
+                'event_id'         => $event->id,
+                'status'           => $initialStatus,
+                'ukuran_baju'      => $request->ukuran_baju,
+                'data_dokumen'     => $dataDokumen, // JSON path dokumen persyaratan
+                'bukti_pembayaran' => $buktiBayarPath, // Path bukti transfer
             ]);
         });
 
-        // E. Redirect ke Dashboard / Halaman Sukses
-        return redirect()->route('dashboard')->with('success', 'Pendaftaran Berhasil! Silakan cek status pendaftaran Anda.');
+        // F. Redirect dengan Pesan Berbeda
+        if ($event->biaya > 0) {
+            return redirect()->route('dashboard')->with('success', 'Pendaftaran Berhasil! Mohon tunggu verifikasi pembayaran oleh panitia.');
+        } else {
+            return redirect()->route('dashboard')->with('success', 'Pendaftaran Berhasil! Anda resmi terdaftar sebagai peserta.');
+        }
+    }
+
+    public function reuploadPayment(Request $request, Registration $registration)
+{
+    // Pastikan user yang upload adalah pemilik data
+    if ($registration->user_id != Auth::id()) {
+        abort(403);
+    }
+
+    $request->validate([
+        'bukti_pembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+    ]);
+
+    if ($request->hasFile('bukti_pembayaran')) {
+        // Hapus file lama jika ada (optional, karena sudah di-reset admin tadi)
+        if ($registration->bukti_pembayaran) {
+            Storage::disk('public')->delete($registration->bukti_pembayaran);
+        }
+
+        $file = $request->file('bukti_pembayaran');
+        $filename = 'payment-' . Auth::id() . '-' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('payments/' . $registration->event_id, $filename, 'public');
+
+        // Update Data
+        $registration->update([
+            'bukti_pembayaran' => $path,
+            'status' => 'pending', // Kembalikan status jadi pending agar dicek admin lagi
+            // Kita biarkan keterangan_penolakan tetap ada sebagai history, atau di-null-kan terserah
+             'keterangan_penolakan' => null // Reset pesannya biar dashboard bersih
+        ]);
+    }
+
+    return redirect()->back()->with('success', 'Bukti pembayaran berhasil dikirim ulang! Mohon tunggu verifikasi.');
+}
+
+// 7. TAMPILKAN DETAIL PENDAFTARAN
+    public function showRegistration(Registration $registration)
+    {
+        // Keamanan: Pastikan yang lihat adalah pemilik data
+        if ($registration->user_id != Auth::id()) {
+            abort(403, 'Akses Ditolak');
+        }
+
+        return view('registrations.show', compact('registration'));
+    }
+
+    // 8. TAMPILKAN QR CODE
+    public function showQr(Registration $registration)
+    {
+        // Keamanan
+        if ($registration->user_id != Auth::id()) {
+            abort(403);
+        }
+        
+        // Hanya status Verified/Lulus yang punya QR
+        if (!in_array($registration->status, ['verified', 'lulus'])) {
+            return redirect()->route('registrations.show', $registration->id)
+                ->with('error', 'QR Code belum tersedia.');
+        }
+
+        return view('registrations.qr', compact('registration'));
     }
 }

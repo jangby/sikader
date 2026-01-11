@@ -34,41 +34,70 @@ class EventController extends Controller
             'lokasi'           => 'required|string',
             'kuota'            => 'required|numeric|min:0',
             'biaya'            => 'required|numeric|min:0',
-            // Validasi Input Dinamis Dokumen
+            
+            // Validasi Dokumen
             'dokumen_nama'     => 'nullable|array',
             'dokumen_nama.*'   => 'nullable|string',
-            'dokumen_wajib'    => 'nullable|array',
+            
+            // Validasi Info Pembayaran (Baru)
+            'rek_provider'     => 'nullable|array',
+            'rek_number'       => 'nullable|array',
+            'rek_name'         => 'nullable|array',
+
+            'banner'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validasi Banner
         ]);
 
-        // 2. Proses Array Dokumen menjadi format JSON
+        // 2. Proses Array Dokumen
         $configDokumen = [];
         if ($request->has('dokumen_nama')) {
             foreach ($request->dokumen_nama as $index => $nama) {
                 if (!empty($nama)) {
                     $configDokumen[] = [
                         'nama'  => $nama,
-                        // Cek apakah di index tersebut wajib bernilai '1'
-                        'wajib' => isset($request->dokumen_wajib[$index]) && $request->dokumen_wajib[$index] == '1' ? true : false,
+                        'wajib' => isset($request->dokumen_wajib[$index]) && $request->dokumen_wajib[$index] == '1',
                     ];
                 }
             }
         }
 
-        // 3. Simpan ke Database
+        // 3. Proses Array Info Pembayaran (LOGIKA BARU)
+        $infoPembayaran = [];
+        if ($request->has('rek_provider')) {
+            foreach ($request->rek_provider as $index => $provider) {
+                if (!empty($provider)) {
+                    $infoPembayaran[] = [
+                        'provider' => $provider, // Misal: BRI, DANA, OVO
+                        'number'   => $request->rek_number[$index] ?? '',
+                        'owner'    => $request->rek_name[$index] ?? '',
+                    ];
+                }
+            }
+        }
+
+        // 2. Upload Banner
+        $bannerPath = null;
+        if ($request->hasFile('banner')) {
+            // Simpan di folder public/banners
+            $bannerPath = $request->file('banner')->store('banners', 'public');
+        }
+
+        // 4. Simpan ke Database
         Event::create([
             'nama_acara'       => $request->nama_acara,
             'slug'             => Str::slug($request->nama_acara) . '-' . time(),
+            'banner'           => $bannerPath,
             'jenis_kaderisasi' => $request->jenis_kaderisasi,
             'tanggal_mulai'    => $request->tanggal_mulai,
             'tanggal_selesai'  => $request->tanggal_selesai,
             'lokasi'           => $request->lokasi,
             'kuota'            => $request->kuota,
             'biaya'            => $request->biaya,
-            'config_dokumen'   => $configDokumen, // <--- Data persyaratan masuk di sini
+            'config_dokumen'   => $configDokumen,
+            'info_pembayaran'  => $infoPembayaran, // <--- Simpan disini
             'is_active'        => true,
         ]);
 
-        return redirect()->route('admin.events.index')->with('success', 'Acara berhasil dibuat beserta persyaratan dokumennya!');
+        return redirect()->route('admin.events.index')->with('success', 'Acara berhasil dibuat!');
     }
 
     // 4. FORM EDIT ACARA
@@ -89,40 +118,73 @@ class EventController extends Controller
             'lokasi'           => 'required|string',
             'kuota'            => 'required|numeric|min:0',
             'biaya'            => 'required|numeric|min:0',
-            // Validasi Input Dinamis Dokumen
+            
+            // Validasi Dokumen
             'dokumen_nama'     => 'nullable|array',
             'dokumen_nama.*'   => 'nullable|string',
-            'dokumen_wajib'    => 'nullable|array',
+            
+            // Validasi Info Pembayaran (Baru)
+            'rek_provider'     => 'nullable|array',
+            'rek_number'       => 'nullable|array',
+            'rek_name'         => 'nullable|array',
+
+            'banner'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Validasi Banner
         ]);
 
-        // 2. Proses Array Dokumen menjadi format JSON
+        // 2. Proses Array Dokumen (Sama seperti store)
         $configDokumen = [];
         if ($request->has('dokumen_nama')) {
             foreach ($request->dokumen_nama as $index => $nama) {
                 if (!empty($nama)) {
                     $configDokumen[] = [
                         'nama'  => $nama,
-                        'wajib' => isset($request->dokumen_wajib[$index]) && $request->dokumen_wajib[$index] == '1' ? true : false,
+                        'wajib' => isset($request->dokumen_wajib[$index]) && $request->dokumen_wajib[$index] == '1',
                     ];
                 }
             }
         }
 
-        // 3. Update Database
+        // 3. Proses Info Pembayaran (Sama seperti store)
+        $infoPembayaran = [];
+        if ($request->has('rek_provider')) {
+            foreach ($request->rek_provider as $index => $provider) {
+                if (!empty($provider)) {
+                    $infoPembayaran[] = [
+                        'provider' => $provider,
+                        'number'   => $request->rek_number[$index] ?? '',
+                        'owner'    => $request->rek_name[$index] ?? '',
+                    ];
+                }
+            }
+        }
+
+        // 2. Handle Banner Update
+        $bannerPath = $event->banner; // Pakai banner lama dulu
+        
+        if ($request->hasFile('banner')) {
+            // Hapus banner lama jika ada
+            if ($event->banner && Storage::disk('public')->exists($event->banner)) {
+                Storage::disk('public')->delete($event->banner);
+            }
+            // Upload banner baru
+            $bannerPath = $request->file('banner')->store('banners', 'public');
+        }
+
+        // 4. Update Database
         $event->update([
             'nama_acara'       => $request->nama_acara,
-            // 'slug'          => Str::slug($request->nama_acara) . '-' . time(), // Optional jika slug mau diupdate
+            'banner'           => $bannerPath,
             'jenis_kaderisasi' => $request->jenis_kaderisasi,
             'tanggal_mulai'    => $request->tanggal_mulai,
             'tanggal_selesai'  => $request->tanggal_selesai,
             'lokasi'           => $request->lokasi,
             'kuota'            => $request->kuota,
             'biaya'            => $request->biaya,
-            'config_dokumen'   => $configDokumen, // <--- Update data persyaratan
-            'is_active'     => $request->is_active, // Jika ada input is_active di form edit
+            'config_dokumen'   => $configDokumen,
+            'info_pembayaran'  => $infoPembayaran, // <--- Update disini
         ]);
 
-        return redirect()->route('admin.events.index')->with('success', 'Data acara dan persyaratan dokumen berhasil diperbarui!');
+        return redirect()->route('admin.events.index')->with('success', 'Acara diperbarui!');
     }
 
     // 6. HAPUS ACARA

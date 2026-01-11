@@ -120,6 +120,45 @@
             </div>
         @endif
 
+        @if($event->biaya > 0)
+            <h3 class="text-md font-bold text-emerald-700 uppercase mb-4 mt-8 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Pembayaran Pendaftaran
+            </h3>
+
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p class="text-sm text-yellow-800 font-bold mb-2">Biaya Pendaftaran: Rp {{ number_format($event->biaya, 0, ',', '.') }}</p>
+                <p class="text-sm text-gray-600 mb-3">Silakan transfer ke salah satu rekening berikut:</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    @if(!empty($event->info_pembayaran))
+                        @foreach($event->info_pembayaran as $bank)
+                            <div class="bg-white p-3 rounded border shadow-sm">
+                                <p class="font-bold text-gray-800">{{ $bank['provider'] }}</p>
+                                <p class="text-lg text-emerald-600 font-mono font-bold">{{ $bank['number'] }}</p>
+                                <p class="text-xs text-gray-500 uppercase">A.N {{ $bank['owner'] }}</p>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="col-span-2 bg-red-50 p-3 rounded text-red-500 text-sm italic">
+                            Informasi rekening belum diatur oleh panitia. Silakan hubungi panitia.
+                        </div>
+                    @endif
+                </div>
+
+                <div class="mt-4 border-t border-yellow-200 pt-4">
+                    <x-input-label for="bukti_pembayaran" value="Upload Bukti Transfer" />
+                    <input type="file" 
+                           name="bukti_pembayaran" 
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                           accept=".jpg,.jpeg,.png,.pdf"
+                           required
+                    >
+                    <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG/PDF. Pastikan nominal & tanggal terlihat jelas.</p>
+                    <x-input-error :messages="$errors->get('bukti_pembayaran')" class="mt-2" />
+                </div>
+            </div>
+        @endif
         <div class="flex items-center justify-end mt-8">
             <x-primary-button class="w-full justify-center py-3 text-lg bg-emerald-600 hover:bg-emerald-700">
                 {{ __('Kirim Pendaftaran') }}

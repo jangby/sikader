@@ -9,7 +9,7 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                 
-                <form action="{{ route('admin.events.update', $event->id) }}" method="POST">
+                <form action="{{ route('admin.events.update', $event->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -18,6 +18,20 @@
                         <x-text-input id="nama_acara" class="block mt-1 w-full" type="text" name="nama_acara" :value="old('nama_acara', $event->nama_acara)" required autofocus />
                         <x-input-error :messages="$errors->get('nama_acara')" class="mt-2" />
                     </div>
+
+                    <div class="mb-4">
+        <x-input-label for="banner" :value="__('Banner Acara')" />
+        
+        @if($event->banner)
+            <div class="mb-2">
+                <img src="{{ asset('storage/' . $event->banner) }}" alt="Current Banner" class="h-32 w-auto rounded-lg shadow-sm object-cover">
+            </div>
+        @endif
+
+        <input type="file" name="banner" id="banner" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 mt-1 shadow-sm border border-gray-300 rounded-md">
+        <p class="text-xs text-gray-500 mt-1">Upload baru untuk mengganti banner lama.</p>
+        <x-input-error :messages="$errors->get('banner')" class="mt-2" />
+    </div>
 
                     <div class="mb-4">
                          <x-input-label for="is_active" :value="__('Status Pendaftaran')" />
@@ -66,6 +80,40 @@
                         </div>
                     </div>
 
+                    <div class="mb-6 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-yellow-800">Rekening Pembayaran</h3>
+                                <p class="text-xs text-yellow-600">Info ini akan muncul di biodata peserta jika biaya > 0.</p>
+                            </div>
+                            <button type="button" onclick="addBankInput()" class="text-xs bg-white text-yellow-700 px-3 py-2 rounded border border-yellow-300 shadow-sm hover:bg-yellow-100 font-bold">
+                                + Tambah Rekening
+                            </button>
+                        </div>
+                        
+                        <div id="bank-wrapper" class="space-y-2">
+                            @if(!empty($event->info_pembayaran))
+                                @foreach($event->info_pembayaran as $bank)
+                                <div class="grid grid-cols-7 gap-2 items-center mb-2 bank-row">
+                                    <div class="col-span-2">
+                                        <input type="text" name="rek_provider[]" value="{{ $bank['provider'] }}" class="w-full text-xs rounded-md border-gray-300 focus:border-yellow-500 focus:ring-yellow-500" placeholder="Bank (Misal: BRI)" required>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <input type="text" name="rek_number[]" value="{{ $bank['number'] }}" class="w-full text-xs rounded-md border-gray-300 focus:border-yellow-500 focus:ring-yellow-500" placeholder="No. Rekening" required>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <input type="text" name="rek_name[]" value="{{ $bank['owner'] }}" class="w-full text-xs rounded-md border-gray-300 focus:border-yellow-500 focus:ring-yellow-500" placeholder="Atas Nama" required>
+                                    </div>
+                                    <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 text-center" title="Hapus">
+                                        &times;
+                                    </button>
+                                </div>
+                                @endforeach
+                            @else
+                                <p id="empty-bank-msg" class="text-xs text-gray-400 italic">Belum ada rekening diatur.</p>
+                            @endif
+                        </div>
+                    </div>
                     <div class="mt-8 border-t pt-6 mb-6">
                         <div class="flex justify-between items-center mb-4">
                             <div>
@@ -114,6 +162,7 @@
     </div>
 
     <script>
+        // --- SCRIPT DOKUMEN ---
         function addDocInput() {
             const wrapper = document.getElementById('doc-wrapper');
             const emptyMsg = document.getElementById('empty-msg');
@@ -121,7 +170,7 @@
             if(emptyMsg) emptyMsg.style.display = 'none';
 
             const div = document.createElement('div');
-            div.className = 'flex gap-2 items-center doc-row mt-2';
+            div.className = 'flex gap-2 items-center doc-row mt-2 animate-pulse';
             div.innerHTML = `
                 <div class="flex-grow grid grid-cols-3 gap-2">
                     <input type="text" name="dokumen_nama[]" class="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Nama Dokumen Baru" required>
@@ -135,6 +184,35 @@
                 </button>
             `;
             wrapper.appendChild(div);
+            setTimeout(() => div.classList.remove('animate-pulse'), 500);
+        }
+
+        // --- SCRIPT REKENING (BARU) ---
+        function addBankInput() {
+            const wrapper = document.getElementById('bank-wrapper');
+            const emptyMsg = document.getElementById('empty-bank-msg');
+            
+            if(emptyMsg) emptyMsg.style.display = 'none';
+
+            const div = document.createElement('div');
+            div.className = 'grid grid-cols-7 gap-2 items-center mb-2 animate-pulse'; 
+            
+            div.innerHTML = `
+                <div class="col-span-2">
+                    <input type="text" name="rek_provider[]" class="w-full text-xs rounded-md border-gray-300 focus:border-yellow-500 focus:ring-yellow-500" placeholder="Bank (Misal: BRI)" required>
+                </div>
+                <div class="col-span-2">
+                    <input type="text" name="rek_number[]" class="w-full text-xs rounded-md border-gray-300 focus:border-yellow-500 focus:ring-yellow-500" placeholder="No. Rekening" required>
+                </div>
+                <div class="col-span-2">
+                    <input type="text" name="rek_name[]" class="w-full text-xs rounded-md border-gray-300 focus:border-yellow-500 focus:ring-yellow-500" placeholder="Atas Nama" required>
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 text-center" title="Hapus">
+                    &times;
+                </button>
+            `;
+            wrapper.appendChild(div);
+            setTimeout(() => div.classList.remove('animate-pulse'), 500);
         }
     </script>
 </x-app-layout>

@@ -15,6 +15,7 @@ use App\Models\ScheduleAttendance;
 use App\Models\EventFinance;
 use App\Exports\ParticipantsExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Services\WahaService;
 
 class EventManagementController extends Controller
 {
@@ -430,30 +431,52 @@ class EventManagementController extends Controller
     }
 
     // 16. PROSES VERIFIKASI PEMBAYARAN (Terima/Tolak)
-    public function verifyPayment(Request $request, Registration $registration)
-    {
-        $request->validate([
-            'action' => 'required|in:accept,reject',
-            'alasan' => 'nullable|string' // Jika ditolak
-        ]);
+    public function verifyPayment(Request $request, Registration $registration, WahaService $waha)
+{
+    $request->validate([
+        'action' => 'required|in:accept,reject',
+        'alasan' => 'nullable|string' // Wajib jika reject (validasi di bawah)
+    ]);
 
-        if ($request->action == 'accept') {
-            $registration->update(['status' => 'verified']);
-            $message = 'Pembayaran diterima. Peserta resmi terdaftar.';
-        } else {
-            // Jika ditolak, status jadi rejected, dan bukti pembayaran dihapus agar user upload ulang
-            // (Opsional: hapus file fisik jika mau hemat storage)
-            // Storage::disk('public')->delete($registration->bukti_pembayaran);
-            
-            $registration->update([
-                'status' => 'rejected',
-                'bukti_pembayaran' => null // Reset bukti agar bisa upload lagi
-            ]);
-            $message = 'Pembayaran ditolak. Peserta diminta upload ulang.';
+    if ($request->action == 'accept') {
+        $registration->update([
+            'status' => 'verified',
+            'keterangan_penolakan' => null // Hapus alasan jika ada
+        ]);
+        
+        // Opsional: Kirim WA Sukses
+        $msg = "Halo *{$registration->user->name}*,\n\nPembayaran Anda untuk acara *{$registration->event->nama_acara}* telah DITERIMA/LUNAS.\nSampai jumpa di lokasi!";
+        $waha->sendText($registration->user->no_hp, $msg);
+
+        $message = 'Pembayaran diterima. Peserta resmi terdaftar.';
+
+    } else {
+        // Validasi Alasan Wajib Diisi
+        if (empty($request->alasan)) {
+            return back()->with('error', 'Alasan penolakan wajib diisi!');
         }
 
-        return redirect()->back()->with('success', $message);
+        // Hapus file lama (Opsional, biar bersih storage-nya)
+        if ($registration->bukti_pembayaran) {
+            Storage::disk('public')->delete($registration->bukti_pembayaran);
+        }
+
+        $registration->update([
+            'status' => 'rejected',
+            'bukti_pembayaran' => null, // Reset agar tombol upload muncul lagi di user
+            'keterangan_penolakan' => $request->alasan
+        ]);
+
+        // KIRIM NOTIFIKASI WA (WAHA)
+        $msg = "Halo *{$registration->user->name}*,\n\nMohon maaf, Bukti Pembayaran Anda untuk acara *{$registration->event->nama_acara}* DITOLAK.\n\n*Alasan:* {$request->alasan}\n\nSilakan login ke dashboard dan upload ulang bukti pembayaran yang benar secepatnya.\nTerima kasih.";
+        
+        $waha->sendText($registration->user->no_hp, $msg);
+
+        $message = 'Pembayaran ditolak & Notifikasi WA terkirim.';
     }
+
+    return redirect()->back()->with('success', $message);
+}
 
     // 17. HALAMAN MANAJEMEN DANA
     public function finances(Event $event)

@@ -21,7 +21,11 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $registrations = \App\Models\Registration::where('user_id', auth()->id())
+                        ->with('event')
+                        ->latest()
+                        ->get();
+    return view('dashboard', compact('registrations'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -31,6 +35,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/biodata', [BiodataController::class, 'edit'])->name('biodata.edit');
     Route::post('/biodata', [BiodataController::class, 'update'])->name('biodata.update');
+    Route::post('/registrations/{registration}/reupload', [PublicEventController::class, 'reuploadPayment'])->name('registrations.reupload');
+    Route::get('/registrations/{registration}', [PublicEventController::class, 'showRegistration'])->name('registrations.show');
+    Route::get('/registrations/{registration}/qr', [PublicEventController::class, 'showQr'])->name('registrations.qr');
+    Route::post('/registrations/{registration}/reupload', [PublicEventController::class, 'reuploadPayment'])->name('registrations.reupload');
 });
 
 // GRUP ROUTE ADMIN (Hanya bisa diakses oleh role:admin)

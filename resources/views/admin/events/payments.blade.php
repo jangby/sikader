@@ -115,8 +115,8 @@
                                         </span>
                                     @elseif($reg->bukti_pembayaran)
                                         <button onclick="openModal('{{ asset('storage/'.$reg->bukti_pembayaran) }}', '{{ $reg->user->profile->nama_lengkap }}')" class="text-indigo-600 hover:text-indigo-900 text-sm font-bold underline flex items-center justify-center mx-auto">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                            Lihat Foto
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Lihat Bukti
                                         </button>
                                     @else
                                         <span class="text-red-400 text-xs italic">File Hilang</span>
@@ -134,32 +134,31 @@
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div class="flex justify-end gap-2">
-                                        @if($reg->bukti_pembayaran == 'manual_offline')
-                                            <span class="text-gray-400 text-xs italic">Auto-Verified</span>
-                                        @else
-                                            @if($reg->status != 'verified')
-                                                <form action="{{ route('admin.events.payments.verify', $reg->id) }}" method="POST">
-                                                    @csrf @method('PATCH')
-                                                    <input type="hidden" name="action" value="accept">
-                                                    <button type="submit" onclick="return confirm('Verifikasi pembayaran peserta ini?')" class="bg-green-600 text-white p-1.5 rounded hover:bg-green-700" title="Terima / Verifikasi">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                                    </button>
-                                                </form>
-                                            @endif
+    <div class="flex justify-end gap-2">
+        @if($reg->bukti_pembayaran == 'manual_offline')
+            <span class="text-gray-400 text-xs italic">Auto-Verified</span>
+        @else
+            @if($reg->status != 'verified')
+                <form action="{{ route('admin.events.payments.verify', $reg->id) }}" method="POST">
+                    @csrf @method('PATCH')
+                    <input type="hidden" name="action" value="accept">
+                    <button type="submit" onclick="return confirm('Verifikasi pembayaran peserta ini?')" class="bg-green-600 text-white p-1.5 rounded hover:bg-green-700" title="Terima">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </button>
+                </form>
+            @endif
 
-                                            @if($reg->status != 'rejected')
-                                                <form action="{{ route('admin.events.payments.verify', $reg->id) }}" method="POST">
-                                                    @csrf @method('PATCH')
-                                                    <input type="hidden" name="action" value="reject">
-                                                    <button type="submit" onclick="return confirm('Tolak pembayaran? Peserta diminta upload ulang.')" class="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 border border-red-200" title="Tolak / Minta Upload Ulang">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        @endif
-                                    </div>
-                                </td>
+            @if($reg->status != 'rejected')
+                <button type="button" 
+                        onclick="openRejectModal('{{ route('admin.events.payments.verify', $reg->id) }}', '{{ $reg->user->profile->nama_lengkap ?? $reg->user->name }}')" 
+                        class="bg-red-100 text-red-600 p-1.5 rounded hover:bg-red-200 border border-red-200" 
+                        title="Tolak / Minta Upload Ulang">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            @endif
+        @endif
+    </div>
+</td>
                             </tr>
                             @endforeach
 
@@ -187,15 +186,20 @@
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                             <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalTitle">
                                 Bukti Pembayaran
                             </h3>
-                            <div class="mt-4 bg-gray-100 rounded-lg p-2 border border-gray-200">
-                                <img id="modalImage" src="" alt="Bukti Transfer" class="w-full h-auto object-contain max-h-[70vh]">
+                            
+                            <div class="mt-4 bg-gray-100 rounded-lg p-2 border border-gray-200 min-h-[300px] flex items-center justify-center">
+                                
+                                <img id="modalImage" src="" alt="Bukti Transfer" class="w-full h-auto object-contain max-h-[70vh] hidden">
+                                
+                                <iframe id="modalPdf" src="" class="w-full h-[70vh] hidden" frameborder="0"></iframe>
+
                             </div>
                         </div>
                     </div>
@@ -205,23 +209,95 @@
                         Tutup
                     </button>
                     <a id="downloadBtn" href="#" target="_blank" class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Buka Full
+                        Buka Full / Download
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="rejectModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeRejectModal()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+            
+            <form id="rejectForm" method="POST" action="">
+                @csrf 
+                @method('PATCH')
+                <input type="hidden" name="action" value="reject">
+
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Tolak Pembayaran</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500 mb-2">Peserta: <span id="rejectUserName" class="font-bold"></span></p>
+                                <label class="block text-sm font-medium text-gray-700">Alasan Penolakan (Wajib)</label>
+                                <textarea name="alasan" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm" placeholder="Contoh: Bukti buram, Nominal tidak sesuai..." required></textarea>
+                                <p class="text-xs text-red-500 mt-1">*Pesan ini akan dikirim otomatis ke WhatsApp peserta.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Kirim Penolakan
+                    </button>
+                    <button type="button" onclick="closeRejectModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Batal
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
     <script>
-        function openModal(imageSrc, userName) {
-            document.getElementById('modalImage').src = imageSrc;
-            document.getElementById('downloadBtn').href = imageSrc;
-            document.getElementById('modalTitle').innerText = 'Bukti Pembayaran: ' + userName;
-            document.getElementById('proofModal').classList.remove('hidden');
+        function openModal(fileSrc, userName) {
+            const modalTitle = document.getElementById('modalTitle');
+            const img = document.getElementById('modalImage');
+            const pdf = document.getElementById('modalPdf');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const modal = document.getElementById('proofModal');
+
+            // 1. Set Info Umum
+            modalTitle.innerText = 'Bukti Pembayaran: ' + userName;
+            downloadBtn.href = fileSrc;
+
+            // 2. Deteksi Ekstensi File (PDF atau Gambar?)
+            // Mengambil ekstensi dari URL file (misal: .../file.pdf)
+            // Hati-hati jika ada query string (?id=...), kita hapus dulu
+            const cleanUrl = fileSrc.split('?')[0]; 
+            const extension = cleanUrl.split('.').pop().toLowerCase();
+
+            if (extension === 'pdf') {
+                // Tampilkan Mode PDF
+                img.classList.add('hidden');
+                pdf.classList.remove('hidden');
+                pdf.src = fileSrc;
+            } else {
+                // Tampilkan Mode Gambar
+                pdf.classList.add('hidden');
+                pdf.src = 'about:blank'; // Reset iframe agar tidak load background
+                img.classList.remove('hidden');
+                img.src = fileSrc;
+            }
+
+            // 3. Tampilkan Modal
+            modal.classList.remove('hidden');
         }
 
         function closeModal() {
             document.getElementById('proofModal').classList.add('hidden');
+            // Reset src agar video/pdf berhenti loading
+            document.getElementById('modalImage').src = '';
+            document.getElementById('modalPdf').src = '';
         }
 
         // Close on Esc key
@@ -231,5 +307,16 @@
                 closeModal();
             }
         };
+
+        // SCRIPT MODAL REJECT (BARU)
+    function openRejectModal(actionUrl, userName) {
+        document.getElementById('rejectForm').action = actionUrl;
+        document.getElementById('rejectUserName').innerText = userName;
+        document.getElementById('rejectModal').classList.remove('hidden');
+    }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.add('hidden');
+    }
     </script>
 </x-app-layout>

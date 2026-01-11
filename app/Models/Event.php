@@ -9,6 +9,7 @@ class Event extends Model
     protected $fillable = [
         'nama_acara',
         'slug',
+        'banner',
         'jenis_kaderisasi',
         'tanggal_mulai',
         'tanggal_selesai',
@@ -18,6 +19,7 @@ class Event extends Model
         'is_active',
         'harga_tiket',
         'config_dokumen',
+        'info_pembayaran',
     ];
 
     // Agar format tanggal otomatis rapi saat dipanggil
@@ -25,6 +27,7 @@ class Event extends Model
         'tanggal_mulai' => 'datetime',
         'tanggal_selesai' => 'datetime',
         'config_dokumen' => 'array',
+        'info_pembayaran' => 'array',
         'is_active' => 'boolean',
     ];
 
