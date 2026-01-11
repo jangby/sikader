@@ -89,6 +89,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('/payments/{registration}/verify', [EventManagementController::class, 'verifyPayment'])->name('events.payments.verify');
     Route::delete('/finances/{finance}', [EventManagementController::class, 'destroyFinance'])->name('events.finances.destroy');
 
+    Route::get('/database-kader', [\App\Http\Controllers\Admin\KaderController::class, 'index'])->name('kader.index');
 
     
 });
