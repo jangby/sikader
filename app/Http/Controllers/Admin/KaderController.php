@@ -11,12 +11,10 @@ class KaderController extends Controller
     public function index(Request $request)
     {
         // 1. QUERY UTAMA
-        // Ambil user dengan role 'user'
-        // HAPUS filter 'where status lulus' agar semua riwayat muncul
+        // Eager load registrations yang PUNYA event saja untuk menghindari error data yatim (orphan)
         $query = User::where('role', 'user')
             ->with(['profile', 'registrations' => function($q) {
-                $q->whereHas('event')
-                  ->with('event');
+                $q->whereHas('event')->with('event');
             }]);
 
         // 2. FITUR PENCARIAN
@@ -36,23 +34,69 @@ class KaderController extends Controller
 
         // 3. TRANSFORMASI DATA (LOGIKA PENENTUAN KELOMPOK)
         $users->getCollection()->transform(function($user) {
-            // Ambil event terakhir yang diikuti (berdasarkan tanggal selesai event)
-            // Tidak peduli statusnya (pending/lulus/gagal), yang penting pernah ikut/daftar
-            $lastRegistration = $user->registrations->sortByDesc(function($reg) {
-                return $reg->event->tanggal_selesai;
-            })->first();
+            $data = $this->determineKaderStatus($user);
+            
+            $user->kader_status = $data['status'];
+            $user->kader_badge = $data['badgeColor'];
+            $user->last_event = $data['eventName'];
+            $user->reg_status = $data['regStatus'];
+            
+            return $user;
+        });
 
-            $status = 'Belum Kader';
-            $badgeColor = 'bg-gray-100 text-gray-800';
-            $eventName = '-';
-            $regStatus = '';
+        // 4. HITUNG STATISTIK
+        // Menggunakan method helper yang sama agar angkanya sinkron dengan tabel
+        $allUsers = User::where('role', 'user')
+            ->with(['registrations' => function($q) {
+                $q->whereHas('event')->with('event');
+            }])->get();
+        
+        $stats = [
+            'total' => $allUsers->count(),
+            'anggota' => 0,
+            'kader_muda' => 0,
+            'instruktur' => 0
+        ];
 
-            if ($lastRegistration) {
-                $jenis = $lastRegistration->event->jenis_kaderisasi;
-                $eventName = $lastRegistration->event->nama_acara;
-                $regStatus = $lastRegistration->status; // pending, verified, lulus, tidak_lulus
-                
-                // LOGIKA PENGELOMPOKAN (Berdasarkan Jenjang Terakhir)
+        foreach ($allUsers as $u) {
+            $statusData = $this->determineKaderStatus($u);
+            
+            // Hitung berdasarkan status text yang dikembalikan
+            if ($statusData['status'] == 'Anggota') $stats['anggota']++;
+            elseif ($statusData['status'] == 'Kader Muda') $stats['kader_muda']++;
+            elseif ($statusData['status'] == 'Instruktur' || $statusData['status'] == 'Pelatih') $stats['instruktur']++;
+        }
+
+        return view('admin.kader.index', compact('users', 'stats'));
+    }
+
+    /**
+     * Helper function untuk menentukan status kader
+     * Agar logika tidak ditulis 2 kali (DRY Principle)
+     */
+    private function determineKaderStatus($user)
+    {
+        // Urutkan registrasi berdasarkan tanggal selesai event (terbaru diatas)
+        $lastRegistration = $user->registrations->sortByDesc(function($reg) {
+            return optional($reg->event)->tanggal_selesai;
+        })->first();
+
+        $status = 'Belum Kader';
+        $badgeColor = 'bg-gray-100 text-gray-800';
+        $eventName = '-';
+        $regStatus = '';
+
+        if ($lastRegistration && $lastRegistration->event) {
+            // Ubah ke huruf besar semua untuk antisipasi input 'Makesta'/'makesta'
+            $jenis = strtoupper($lastRegistration->event->jenis_kaderisasi);
+            
+            $eventName = $lastRegistration->event->nama_acara;
+            $regStatus = $lastRegistration->status; 
+
+            // OPSIONAL: Jika Anda ingin status kader HANYA berubah jika peserta "LULUS",
+            // buka komentar if dibawah ini. Saat ini logika Anda "pernah ikut = kader".
+            // if ($regStatus == 'lulus') { 
+
                 switch ($jenis) {
                     case 'MAKESTA':
                         $status = 'Anggota';
@@ -72,43 +116,18 @@ class KaderController extends Controller
                         $badgeColor = 'bg-orange-100 text-orange-800';
                         break;
                     default:
-                        $status = 'Partisipan'; // Untuk acara non-formal
+                        $status = 'Partisipan'; 
                         $badgeColor = 'bg-gray-100 text-gray-800';
                 }
-            }
 
-            // Simpan data tambahan ke object user untuk ditampilkan di View
-            $user->kader_status = $status;
-            $user->kader_badge = $badgeColor;
-            $user->last_event = $eventName;
-            $user->reg_status = $regStatus; // Kita kirim status reg juga untuk info tambahan
-            
-            return $user;
-        });
-
-        // 4. HITUNG STATISTIK (DIPERBAIKI)
-        // Hitung berdasarkan user, bukan sekadar jumlah registrasi
-        $allUsers = User::where('role', 'user')->with(['registrations.event'])->get();
-        
-        $stats = [
-            'total' => $allUsers->count(),
-            'anggota' => 0,
-            'kader_muda' => 0,
-            'instruktur' => 0
-        ];
-
-        foreach ($allUsers as $u) {
-            // Cari jenjang terakhir orang ini
-            $lastReg = $u->registrations->sortByDesc(fn($r) => $r->event->tanggal_selesai)->first();
-            
-            if ($lastReg) {
-                $j = $lastReg->event->jenis_kaderisasi;
-                if ($j == 'MAKESTA') $stats['anggota']++;
-                elseif ($j == 'LAKMUD') $stats['kader_muda']++;
-                elseif (in_array($j, ['LAKUT', 'LATIN'])) $stats['instruktur']++;
-            }
+            // } // end if lulus check
         }
 
-        return view('admin.kader.index', compact('users', 'stats'));
+        return [
+            'status' => $status,
+            'badgeColor' => $badgeColor,
+            'eventName' => $eventName,
+            'regStatus' => $regStatus
+        ];
     }
 }

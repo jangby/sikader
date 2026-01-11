@@ -14,6 +14,7 @@ class Registration extends Model
         'certificate_link',
         'ukuran_baju',
         'data_dokumen',
+        'keterangan_penolakan',
     ];
 
     protected $casts = [

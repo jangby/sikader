@@ -12,18 +12,10 @@ class DatabaseSeeder extends Seeder
     {
         // Buat Akun Admin
         User::create([
-            'name' => 'Admin PC IPNU',
-            'email' => 'admin@ipnu.com',
+            'name' => 'Admin SIKUT',
+            'email' => 'admin@sikut.com',
             'password' => Hash::make('password'), // passwordnya: password
             'role' => 'admin',
-        ]);
-
-        // Buat 1 Akun Member buat ngetes nanti
-        User::create([
-            'name' => 'Rekan Kader',
-            'email' => 'kader@ipnu.com',
-            'password' => Hash::make('password'),
-            'role' => 'member',
         ]);
     }
 }
