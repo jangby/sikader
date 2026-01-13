@@ -196,16 +196,16 @@ class PublicEventController extends Controller
 
         // LOGIKA BARU: Validasi Pembayaran (Hanya Jika Berbayar)
         if ($event->biaya > 0) {
-            $rules['bukti_pembayaran'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:2048'; // Max 2MB
+            $rules['bukti_pembayaran'] = 'required|file|mimes:jpg,jpeg,png|max:2048'; // Max 2MB
         }
 
         // Validasi Dokumen Dinamis (Sesuai Config Event)
         if (!empty($event->config_dokumen)) {
             foreach ($event->config_dokumen as $index => $doc) {
                 if ($doc['wajib']) {
-                    $rules["dokumen.$index"] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'; // Max 5MB
+                    $rules["dokumen.$index"] = 'required|file|mimes:jpg,jpeg,png|max:5120'; // Max 5MB
                 } else {
-                    $rules["dokumen.$index"] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
+                    $rules["dokumen.$index"] = 'nullable|file|mimes:jpg,jpeg,png|max:5120';
                 }
             }
         }
@@ -310,7 +310,7 @@ class PublicEventController extends Controller
     }
 
     $request->validate([
-        'bukti_pembayaran' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        'bukti_pembayaran' => 'required|file|mimes:jpg,jpeg,png|max:2048',
     ]);
 
     if ($request->hasFile('bukti_pembayaran')) {

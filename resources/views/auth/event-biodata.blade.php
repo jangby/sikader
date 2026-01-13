@@ -110,10 +110,10 @@
                         <input type="file" 
                                name="dokumen[{{ $index }}]" 
                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                               accept=".jpg,.jpeg,.png,.pdf"
+                               accept=".jpg,.jpeg,.png,"
                                {{ $doc['wajib'] ? 'required' : '' }}
                         >
-                        <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG/PDF. Max: 5MB.</p>
+                        <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG. Max: 5MB.</p>
                         <x-input-error :messages="$errors->get('dokumen.'.$index)" class="mt-2" />
                     </div>
                 @endforeach
@@ -151,10 +151,10 @@
                     <input type="file" 
                            name="bukti_pembayaran" 
                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                           accept=".jpg,.jpeg,.png,.pdf"
+                           accept=".jpg,.jpeg,.png,"
                            required
                     >
-                    <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG/PDF. Pastikan nominal & tanggal terlihat jelas.</p>
+                    <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG. Pastikan nominal & tanggal terlihat jelas.</p>
                     <x-input-error :messages="$errors->get('bukti_pembayaran')" class="mt-2" />
                 </div>
             </div>
@@ -165,4 +165,51 @@
             </x-primary-button>
         </div>
     </form>
+
+    {{-- Script Kompresi Gambar Otomatis (Anti PDF) --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+
+        fileInputs.forEach(input => {
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // VALIDASI EKSTRA: Jika user memaksa upload PDF (drag & drop), tolak!
+                if (file.type === 'application/pdf') {
+                    alert('Mohon maaf, format PDF tidak diterima. Harap upload dalam bentuk Gambar (JPG/PNG/Foto Screenshot).');
+                    input.value = ''; // Reset input
+                    return;
+                }
+
+                // Lakukan Kompresi
+                new Compressor(file, {
+                    quality: 0.6, // Kualitas 60%
+                    maxWidth: 1200, 
+                    maxHeight: 1200, 
+                    mimeType: 'image/jpeg', // Convert PNG ke JPG biar enteng
+                    
+                    success(result) {
+                        const dataTransfer = new DataTransfer();
+                        const compressedFile = new File([result], result.name, {
+                            type: result.type,
+                            lastModified: Date.now(),
+                        });
+
+                        dataTransfer.items.add(compressedFile);
+                        input.files = dataTransfer.files;
+                        
+                        console.log(`Kompresi: ${file.size} -> ${compressedFile.size}`);
+                    },
+                    error(err) {
+                        console.error('Gagal kompresi:', err.message);
+                    },
+                });
+            });
+        });
+    });
+</script>
 </x-guest-layout>
