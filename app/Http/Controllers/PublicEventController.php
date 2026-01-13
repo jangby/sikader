@@ -23,6 +23,11 @@ class PublicEventController extends Controller
     // 1. TAMPILKAN FORMULIR PENDAFTARAN AWAL
     public function showRegister(Event $event)
     {
+        // Jika sudah login, langsung lempar ke pengisian biodata
+        if (Auth::check()) {
+            return redirect()->route('events.form_biodata', $event->id);
+        }
+
         return view('auth.event-register', compact('event'));
     }
 
@@ -145,6 +150,10 @@ class PublicEventController extends Controller
     public function showBiodata(Event $event)
     {
         $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
 
         // Cek apakah sudah verified? (Security)
         if (!$user->email_verified_at || !$user->wa_verified_at) {

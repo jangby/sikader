@@ -21,11 +21,25 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    $registrations = \App\Models\Registration::where('user_id', auth()->id())
+    $user = auth()->user();
+
+    // 1. Ambil Riwayat Pendaftaran (Logic Lama)
+    $registrations = \App\Models\Registration::where('user_id', $user->id)
                         ->with('event')
                         ->latest()
                         ->get();
-    return view('dashboard', compact('registrations'));
+
+    // 2. Ambil ID Event yang sudah didaftar agar tidak muncul lagi di "Tersedia"
+    $registeredEventIds = $registrations->pluck('event_id')->toArray();
+
+    // 3. Ambil Acara Tersedia (Masa depan & Belum terdaftar)
+    $availableEvents = Event::where('tanggal_mulai', '>=', now()->startOfDay())
+                        ->whereNotIn('id', $registeredEventIds) // Kecualikan yang sudah ikut
+                        ->orderBy('tanggal_mulai', 'asc')
+                        ->get();
+
+    // Kirim kedua variabel ke view
+    return view('dashboard', compact('registrations', 'availableEvents'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

@@ -159,6 +159,51 @@
                     </div>
                 @endforelse
             </div>
+
+            {{-- BAGIAN BARU: ACARA TERSEDIA --}}
+            <div class="mt-8 flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <span class="w-1 h-6 bg-blue-600 rounded-full mr-3"></span>
+                    Acara Tersedia
+                </h3>
+            </div>
+
+            <div class="space-y-4">
+                @forelse($availableEvents as $event)
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 relative overflow-hidden group hover:shadow-md transition-all">
+                        {{-- Banner Kecil (Opsional jika ada) --}}
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-[15px] leading-snug">{{ $event->nama_acara }}</h4>
+                                <p class="text-xs text-gray-500 mt-1 flex items-center">
+                                    <svg class="w-3.5 h-3.5 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    {{ \Carbon\Carbon::parse($event->tanggal_mulai)->format('d M Y') }}
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1 flex items-center">
+                                    <svg class="w-3.5 h-3.5 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    {{ $event->lokasi ?? 'Lokasi belum ditentukan' }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
+                            <span class="text-xs font-bold {{ $event->biaya > 0 ? 'text-orange-600' : 'text-green-600' }}">
+                                {{ $event->biaya > 0 ? 'Rp '.number_format($event->biaya, 0, ',', '.') : 'GRATIS' }}
+                            </span>
+                            
+                            {{-- LOGIKA UTAMA: Langsung ke Form Biodata --}}
+                            <a href="{{ route('events.form_biodata', $event->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-sm flex items-center">
+                                Daftar Sekarang
+                                <svg class="w-3.5 h-3.5 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                            </a>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center py-8 bg-white rounded-2xl border border-dashed border-gray-200">
+                        <p class="text-xs text-gray-400">Tidak ada acara baru saat ini.</p>
+                    </div>
+                @endforelse
+            </div>
             
             <div class="h-10"></div> </div>
 
