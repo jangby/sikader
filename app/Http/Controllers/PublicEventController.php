@@ -151,18 +151,27 @@ class PublicEventController extends Controller
     {
         $user = Auth::user();
 
+        // 1. Pastikan User Login
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // Cek apakah sudah verified? (Security)
-        if (!$user->email_verified_at || !$user->wa_verified_at) {
+        // 2. LOGIKA BARU: Cek Verifikasi
+        // Jika user adalah pendaftar baru lewat event ini, email & wa pasti null -> Harus verifikasi.
+        // Jika user lama (dari dashboard), minimal email_verified_at sudah ada -> Boleh lewat.
+        if (!$user->email_verified_at) {
             return redirect()->route('events.verify_page', $event->id)
                 ->with('error', 'Silakan verifikasi akun terlebih dahulu.');
         }
 
-        // Cek apakah sudah pernah daftar di event ini?
-        $existingReg = Registration::where('user_id', $user->id)->where('event_id', $event->id)->first();
+        // CATATAN: Pengecekan '|| !$user->wa_verified_at' DIHAPUS agar user lama 
+        // yang belum verifikasi WA tetap bisa lanjut mengisi biodata.
+
+        // 3. Cek apakah sudah pernah daftar di event ini?
+        $existingReg = Registration::where('user_id', $user->id)
+                            ->where('event_id', $event->id)
+                            ->first();
+                            
         if ($existingReg) {
             return redirect()->route('dashboard')->with('success', 'Anda sudah terdaftar di acara ini.');
         }
