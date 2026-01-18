@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventManagementController;
 use App\Models\Event;
 use App\Http\Controllers\PublicEventController;
+use App\Models\Registration;
 
 Route::get('/', function () {
     // Ambil acara yang tanggal mulainya hari ini atau masa depan
@@ -23,7 +24,7 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
 
-    // 1. Ambil Riwayat Pendaftaran (Logic Lama)
+    // 1. Ambil Riwayat Pendaftaran User
     $registrations = \App\Models\Registration::where('user_id', $user->id)
                         ->with('event')
                         ->latest()
@@ -33,14 +34,16 @@ Route::get('/dashboard', function () {
     $registeredEventIds = $registrations->pluck('event_id')->toArray();
 
     // 3. Ambil Acara Tersedia (Masa depan & Belum terdaftar)
+    // Variabel inilah ($availableEvents) yang hilang sebelumnya
     $availableEvents = Event::where('tanggal_mulai', '>=', now()->startOfDay())
+                        ->where('is_active', 1) // Pastikan hanya ambil event aktif
                         ->whereNotIn('id', $registeredEventIds) // Kecualikan yang sudah ikut
                         ->orderBy('tanggal_mulai', 'asc')
                         ->get();
 
     // Kirim kedua variabel ke view
     return view('dashboard', compact('registrations', 'availableEvents'));
-})->middleware(['auth'])->name('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -60,6 +63,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     
     // Dashboard Admin
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
 
     // Manajemen Event (CRUD dasar)
     Route::resource('events', EventController::class);

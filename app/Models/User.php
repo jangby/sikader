@@ -16,6 +16,7 @@ class User extends Authenticatable
         'email',
         'no_hp',
         'password',
+        'role',
         'wa_verified_at',   // <--- WAJIB DITAMBAHKAN
         'email_verified_at',
     ];

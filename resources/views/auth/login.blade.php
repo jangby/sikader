@@ -91,13 +91,6 @@
                         MASUK
                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                     </button>
-
-                    <div class="mt-8 text-center">
-                        <p class="text-sm text-gray-500">
-                            Belum punya akun? 
-                            <a href="{{ route('register') }}" class="text-emerald-600 font-bold hover:underline transition">Daftar Akun</a>
-                        </p>
-                    </div>
                 </form>
             </div>
         </div>
