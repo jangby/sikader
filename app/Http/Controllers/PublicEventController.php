@@ -17,6 +17,7 @@ use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver; // Driver Gambar
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Session;
 
 class PublicEventController extends Controller
 {
@@ -34,116 +35,115 @@ class PublicEventController extends Controller
     // 2. PROSES PENDAFTARAN (SIMPAN USER & KIRIM KODE)
     public function processRegister(Request $request, Event $event, WahaService $waha)
     {
-        // Validasi Input
-        $request->validate([
+        // A. Validasi Input
+        // Pastikan view blade Anda memiliki value="{{ old('name') }}" agar data tidak hilang saat error
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users', // Cek unik ke DB User (aman)
             'no_hp' => 'required|string|unique:users',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // Gunakan Transaction: Jika ada error di tengah jalan, batalkan semua perubahan database
-        DB::transaction(function () use ($request, $waha) {
+        // B. Generate Kode OTP
+        $emailCode = rand(100000, 999999);
+        $waCode = rand(100000, 999999);
 
-            // A. Simpan User Baru
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'no_hp' => $request->no_hp,
-                'password' => Hash::make($request->password),
-            ]);
+        // C. Simpan Data ke SESSION (Bukan Database)
+        // Data ini akan hilang otomatis jika user menutup browser
+        $tempData = [
+            'name'      => $validated['name'],
+            'email'     => $validated['email'],
+            'no_hp'     => $validated['no_hp'],
+            'password'  => Hash::make($validated['password']), // Hash sekarang
+            'otp_email' => $emailCode,
+            'otp_wa'    => $waCode,
+            'event_id'  => $event->id // Simpan ID event agar tidak tertukar
+        ];
 
-            // B. Generate Kode Acak 6 Digit
-            $emailCode = rand(100000, 999999);
-            $waCode = rand(100000, 999999);
+        Session::put('temp_register_data', $tempData);
 
-            // C. Simpan Kode ke Database
-            DB::table('verification_codes')->insert([
-                ['user_id' => $user->id, 'type' => 'email', 'code' => $emailCode, 'expires_at' => now()->addMinutes(15)],
-                ['user_id' => $user->id, 'type' => 'whatsapp', 'code' => $waCode, 'expires_at' => now()->addMinutes(15)],
-            ]);
+        // D. Kirim Email (Gunakan Try-Catch agar tidak error fatal)
+        try {
+            // Pastikan Mailable OtpMail menerima string kode, bukan object User
+            Mail::to($validated['email'])->send(new OtpMail($emailCode));
+        } catch (\Exception $e) {
+            // Log error tapi jangan hentikan proses
+            \Log::error('Gagal kirim email OTP: ' . $e->getMessage());
+        }
 
-            // D. Kirim Email (Pakai try catch agar jika email gagal, proses tidak error total)
-            try {
-                Mail::to($user->email)->send(new OtpMail($emailCode));
-            } catch (\Exception $e) { 
-                \Log::error('Gagal kirim email: '.$e->getMessage()); 
-            }
+        // E. Kirim WhatsApp (Gunakan Try-Catch juga)
+        try {
+            $pesanWA = "*KODE VERIFIKASI SI-KUT*\n\nHalo {$validated['name']},\nKode WhatsApp Anda: *$waCode*\n\nJangan berikan kode ini kepada siapapun.";
+            $waha->sendText($validated['no_hp'], $pesanWA);
+        } catch (\Exception $e) {
+            \Log::error('Gagal kirim WA OTP: ' . $e->getMessage());
+        }
 
-            // E. Kirim WhatsApp
-            $pesanWA = "*KODE VERIFIKASI SI-KADER*\n\nHalo {$user->name},\nKode WhatsApp Anda: *$waCode*\n\nJangan berikan kode ini kepada siapapun.";
-            $waha->sendText($user->no_hp, $pesanWA);
-
-            // F. Login User Otomatis (Status belum verified)
-            Auth::login($user);
-        });
-
-        // G. Arahkan ke halaman input kode
+        // F. Redirect ke Halaman Verifikasi
+        // Saat ini User BELUM ADA di database, jadi aman jika ditinggal keluar
         return redirect()->route('events.verify_page', $event->id);
     }
 
     // 3. TAMPILKAN HALAMAN INPUT KODE
     public function showVerify(Event $event)
     {
-        $user = Auth::user();
-
-        // Jika belum login, tendang ke login
-        if (!$user) return redirect()->route('login');
-
-        // Jika user sudah terverifikasi sebelumnya, langsung lanjut ke biodata
-        if ($user->email_verified_at && $user->wa_verified_at) {
-            return redirect()->route('events.form_biodata', $event->id);
+        // Cek apakah ada data di session?
+        if (!Session::has('temp_register_data')) {
+            return redirect()->route('events.register', $event->id)
+                ->with('error', 'Sesi pendaftaran telah berakhir. Silakan daftar ulang.');
         }
 
-        return view('auth.event-verify', compact('event', 'user'));
+        // Ambil data session untuk ditampilkan (misal: kirim ke email mana)
+        $tempUser = (object) Session::get('temp_register_data');
+
+        return view('auth.event-verify', compact('event', 'tempUser'));
     }
 
-    // 4. CEK KODE YANG DIINPUT USER
+    // 4. CEK KODE & BUAT AKUN (FINALISASI)
     public function verify(Request $request, Event $event)
     {
         $request->validate([
             'email_code' => 'required|numeric',
-            'wa_code' => 'required|numeric',
+            'wa_code'    => 'required|numeric',
         ]);
 
-        $user = Auth::user();
+        // Ambil Data dari Session
+        $tempData = Session::get('temp_register_data');
 
-        // Cek Kode Email di Database
-        $validEmail = DB::table('verification_codes')
-            ->where('user_id', $user->id)
-            ->where('type', 'email')
-            ->where('code', $request->email_code)
-            ->where('expires_at', '>', now()) // Pastikan belum kadaluarsa
-            ->exists();
-
-        // Cek Kode WA di Database
-        $validWa = DB::table('verification_codes')
-            ->where('user_id', $user->id)
-            ->where('type', 'whatsapp')
-            ->where('code', $request->wa_code)
-            ->where('expires_at', '>', now())
-            ->exists();
-
-        if ($validEmail && $validWa) {
-            // 1. Update User jadi Verified
-            // Kita gunakan forceFill agar jika lupa set fillable, tetap maksa masuk
-            $user->forceFill([
-                'email_verified_at' => now(),
-                'wa_verified_at' => now(),
-            ])->save();
-
-            // 2. Hapus kode bekas
-            DB::table('verification_codes')->where('user_id', $user->id)->delete();
-
-            // 3. PENTING: Refresh data user di sesi login
-            // Agar saat redirect, sistem tahu user ini sudah update datanya
-            Auth::setUser($user->fresh()); 
-
-            return redirect()->route('events.form_biodata', $event->id)
-                ->with('success', 'Verifikasi Berhasil! Silakan lengkapi biodata.');
-        } else {
-            return back()->with('error', 'Salah satu atau kedua kode verifikasi salah/kadaluarsa.');
+        // Validasi Sesi
+        if (!$tempData) {
+            return redirect()->route('events.register', $event->id)
+                ->with('error', 'Sesi kadaluarsa.');
         }
+
+        // Cek Kesesuaian Kode
+        if ($request->email_code != $tempData['otp_email'] || $request->wa_code != $tempData['otp_wa']) {
+            return back()->with('error', 'Kode Verifikasi Salah! Silakan cek ulang Email dan WhatsApp Anda.');
+        }
+
+        // === MULAI PROSES PENYIMPANAN DATABASE ===
+        DB::transaction(function () use ($tempData) {
+            // 1. Buat User
+            $user = User::create([
+                'name'              => $tempData['name'],
+                'email'             => $tempData['email'],
+                'no_hp'             => $tempData['no_hp'],
+                'password'          => $tempData['password'],
+                'role'              => 'user', // Default role
+                'email_verified_at' => now(),  // Langsung verified
+                'wa_verified_at'    => now(),
+            ]);
+
+            // 3. Login Otomatis
+            Auth::login($user);
+        });
+
+        // Hapus Data Session agar bersih
+        Session::forget('temp_register_data');
+
+        // Redirect ke Biodata
+        return redirect()->route('events.form_biodata', $event->id)
+            ->with('success', 'Akun berhasil dibuat & diverifikasi! Silakan lengkapi biodata.');
     }
 
     // 5. TAMPILKAN FORM BIODATA (TAHAP 3)

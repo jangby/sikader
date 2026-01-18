@@ -53,6 +53,7 @@
                 </div>
             @endif
 
+            {{-- STATISTIK CARDS --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
                     <div class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Peserta</div>
@@ -92,6 +93,7 @@
                 </div>
             </div>
 
+            {{-- FILTER DAN PENCARIAN --}}
             <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between gap-4 items-center">
                 
                 <form method="GET" class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-grow">
@@ -137,6 +139,7 @@
                 </div>
             </div>
 
+            {{-- TABEL DATA --}}
             <div class="bg-white overflow-hidden shadow-lg sm:rounded-xl border border-gray-100">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -184,145 +187,211 @@
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $profile->asal_delegasi ?? '-' }}</td>
                                 <td class="px-6 py-4">
                                     @if($reg->status == 'lulus')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                            Lulus
-                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">Lulus</span>
                                     @elseif($reg->status == 'verified')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                                            Verified
-                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">Verified</span>
                                     @elseif($reg->status == 'pending')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                                            Pending
-                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">Pending</span>
                                     @elseif($reg->status == 'tidak_lulus')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                            Tidak Lulus
-                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">Tidak Lulus</span>
                                     @else
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                                            {{ ucfirst($reg->status) }}
-                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">{{ ucfirst($reg->status) }}</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button x-data="" x-on:click.prevent="$dispatch('open-modal', 'edit-user-{{ $reg->id }}')" class="text-emerald-600 hover:text-emerald-900 font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-md transition duration-150">
-                                        Edit
+                                        Edit / Detail
                                     </button>
                                 </td>
                             </tr>
 
-                            <x-modal name="edit-user-{{ $reg->id }}" focusable>
+                            {{-- MODAL EDIT PESERTA & LIHAT BERKAS (UPDATED) --}}
+                            <x-modal name="edit-user-{{ $reg->id }}" focusable maxWidth="4xl">
                                 <form method="POST" action="{{ route('admin.events.participants.update', $reg->id) }}" class="p-6 text-left">
                                     @csrf
                                     @method('PUT')
                                     
+                                    {{-- Header Modal --}}
                                     <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                                        <div>
-                                            <h2 class="text-xl font-bold text-gray-800">Edit Data Peserta</h2>
-                                            <p class="text-sm text-gray-500 mt-1">Ubah status dan data diri peserta.</p>
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold mr-4">
+                                                {{ substr($reg->user->name, 0, 1) }}
+                                            </div>
+                                            <div>
+                                                <h2 class="text-xl font-bold text-gray-800">Detail & Edit Peserta</h2>
+                                                <p class="text-sm text-gray-500 mt-0.5">{{ $reg->user->name }} - #{{ $reg->id }}</p>
+                                            </div>
                                         </div>
-                                        <button type="button" x-on:click="$dispatch('close')" class="text-gray-400 hover:text-gray-600 transition">
+                                        <button type="button" x-on:click="$dispatch('close')" class="text-gray-400 hover:text-gray-600 transition p-2 hover:bg-gray-100 rounded-full">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                         </button>
                                     </div>
                                     
-                                    <div class="space-y-6 h-96 overflow-y-auto pr-2 custom-scrollbar"> 
+                                    <div class="h-[500px] overflow-y-auto pr-2 custom-scrollbar"> 
                                         
-                                        <div class="bg-amber-50 p-5 rounded-xl border border-amber-200">
-                                            <h3 class="text-sm font-bold text-amber-800 mb-3 uppercase tracking-wider flex items-center">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                Status Keikutsertaan
-                                            </h3>
-                                            <div>
-                                                <x-input-label value="Pilih Status Terbaru" class="text-amber-900" />
-                                                <select name="status" class="mt-1 block w-full border-amber-300 rounded-lg shadow-sm focus:border-amber-500 focus:ring-amber-500 font-bold text-gray-700">
-                                                    <option value="pending" {{ $reg->status == 'pending' ? 'selected' : '' }}>⏳ Pending (Menunggu Verifikasi)</option>
-                                                    <option value="verified" {{ $reg->status == 'verified' ? 'selected' : '' }}>✔️ Verified (Peserta Sah)</option>
-                                                    <option value="lulus" {{ $reg->status == 'lulus' ? 'selected' : '' }} class="text-green-700 bg-green-50">🏆 LULUS (Berhak Sertifikat)</option>
-                                                    <option value="tidak_lulus" {{ $reg->status == 'tidak_lulus' ? 'selected' : '' }} class="text-red-700 bg-red-50">❌ TIDAK LULUS / GUGUR</option>
-                                                </select>
-                                                <p class="text-xs text-amber-700/80 mt-2">
-                                                    Pilih <b>"LULUS"</b> agar peserta ini muncul di menu pembuatan Sertifikat.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase border-b pb-2">Identitas Diri</h3>
-                                            <div class="grid grid-cols-1 gap-4">
-                                                <div>
-                                                    <x-input-label value="Nama Lengkap" />
-                                                    <x-text-input name="nama_lengkap" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->nama_lengkap ?? ''" required />
-                                                </div>
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {{-- GRID LAYOUT: 2 KOLOM --}}
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                            
+                                            {{-- KOLOM KIRI: FORM EDIT STATUS & BIODATA --}}
+                                            <div class="space-y-6">
+                                                
+                                                {{-- 1. Status Section --}}
+                                                <div class="bg-amber-50 p-5 rounded-xl border border-amber-200">
+                                                    <h3 class="text-sm font-bold text-amber-800 mb-3 uppercase tracking-wider flex items-center">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                        Status Keikutsertaan
+                                                    </h3>
                                                     <div>
-                                                        <x-input-label value="No HP (WhatsApp)" />
-                                                        <x-text-input name="no_hp" type="number" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->no_hp ?? ''" required />
-                                                    </div>
-                                                    <div>
-                                                        <x-input-label value="Jenis Kelamin" />
-                                                        <select name="jenis_kelamin" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-emerald-500 focus:ring-emerald-500" required>
-                                                            <option value="Laki-laki" {{ ($profile->jenis_kelamin ?? '') == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
-                                                            <option value="Perempuan" {{ ($profile->jenis_kelamin ?? '') == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
+                                                        <x-input-label value="Update Status" class="text-amber-900" />
+                                                        <select name="status" class="mt-1 block w-full border-amber-300 rounded-lg shadow-sm focus:border-amber-500 focus:ring-amber-500 font-bold text-gray-700">
+                                                            <option value="pending" {{ $reg->status == 'pending' ? 'selected' : '' }}>⏳ Pending (Menunggu)</option>
+                                                            <option value="verified" {{ $reg->status == 'verified' ? 'selected' : '' }}>✔️ Verified (Sah)</option>
+                                                            <option value="lulus" {{ $reg->status == 'lulus' ? 'selected' : '' }}>🏆 LULUS</option>
+                                                            <option value="tidak_lulus" {{ $reg->status == 'tidak_lulus' ? 'selected' : '' }}>❌ TIDAK LULUS</option>
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <x-input-label value="Tempat Lahir" />
-                                                        <x-text-input name="tempat_lahir" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->tempat_lahir ?? ''" required />
-                                                    </div>
-                                                    <div>
-                                                        <x-input-label value="Tanggal Lahir" />
-                                                        <x-text-input name="tanggal_lahir" type="date" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->tanggal_lahir ?? ''" required />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <x-input-label value="Asal Delegasi" />
-                                                    <x-text-input name="asal_delegasi" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->asal_delegasi ?? ''" required />
-                                                </div>
-                                            </div>
-                                        </div>
 
-                                        <div>
-                                            <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase border-b pb-2">Alamat Domisili</h3>
-                                            <div class="space-y-4">
+                                                {{-- 2. Biodata Section --}}
                                                 <div>
-                                                    <x-input-label value="Jalan / Dusun / Blok" />
-                                                    <textarea name="alamat" rows="2" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-emerald-500 focus:ring-emerald-500" required>{{ $profile->alamat ?? '' }}</textarea>
+                                                    <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase border-b pb-2 flex items-center">
+                                                        <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                                        Data Diri
+                                                    </h3>
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <x-input-label value="Nama Lengkap" />
+                                                            <x-text-input name="nama_lengkap" type="text" class="mt-1 block w-full" :value="$profile->nama_lengkap ?? ''" required />
+                                                        </div>
+                                                        <div class="grid grid-cols-2 gap-4">
+                                                            <div>
+                                                                <x-input-label value="No HP" />
+                                                                <x-text-input name="no_hp" type="number" class="mt-1 block w-full" :value="$profile->no_hp ?? ''" required />
+                                                            </div>
+                                                            <div>
+                                                                <x-input-label value="Gender" />
+                                                                <select name="jenis_kelamin" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-emerald-500 focus:ring-emerald-500" required>
+                                                                    <option value="Laki-laki" {{ ($profile->jenis_kelamin ?? '') == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                                                                    <option value="Perempuan" {{ ($profile->jenis_kelamin ?? '') == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="grid grid-cols-2 gap-4">
+                                                            <div>
+                                                                <x-input-label value="Tempat Lahir" />
+                                                                <x-text-input name="tempat_lahir" type="text" class="mt-1 block w-full" :value="$profile->tempat_lahir ?? ''" required />
+                                                            </div>
+                                                            <div>
+                                                                <x-input-label value="Tanggal Lahir" />
+                                                                <x-text-input name="tanggal_lahir" type="date" class="mt-1 block w-full" :value="$profile->tanggal_lahir ?? ''" required />
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <x-input-label value="Asal Delegasi" />
+                                                            <x-text-input name="asal_delegasi" type="text" class="mt-1 block w-full" :value="$profile->asal_delegasi ?? ''" required />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <x-input-label value="RT" />
-                                                        <x-text-input name="rt" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->rt ?? ''" required />
-                                                    </div>
-                                                    <div>
-                                                        <x-input-label value="RW" />
-                                                        <x-text-input name="rw" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->rw ?? ''" required />
-                                                    </div>
-                                                </div>
-                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <x-input-label value="Desa/Kelurahan" />
-                                                        <x-text-input name="desa" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->desa ?? ''" required />
-                                                    </div>
-                                                    <div>
-                                                        <x-input-label value="Kecamatan" />
-                                                        <x-text-input name="kecamatan" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->kecamatan ?? ''" required />
-                                                    </div>
-                                                    <div>
-                                                        <x-input-label value="Kabupaten" />
-                                                        <x-text-input name="kabupaten" type="text" class="mt-1 block w-full focus:ring-emerald-500 focus:border-emerald-500" :value="$profile->kabupaten ?? ''" required />
+                                                
+                                                {{-- 3. Alamat Section --}}
+                                                <div>
+                                                    <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase border-b pb-2 flex items-center">
+                                                        <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                        Alamat
+                                                    </h3>
+                                                    <div class="space-y-4">
+                                                        <textarea name="alamat" rows="2" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-emerald-500 focus:ring-emerald-500" placeholder="Jalan/Dusun">{{ $profile->alamat ?? '' }}</textarea>
+                                                        <div class="grid grid-cols-2 gap-4">
+                                                            <x-text-input name="rt" placeholder="RT" class="block w-full" :value="$profile->rt ?? ''" />
+                                                            <x-text-input name="rw" placeholder="RW" class="block w-full" :value="$profile->rw ?? ''" />
+                                                        </div>
+                                                        <div class="grid grid-cols-2 gap-4">
+                                                            <x-text-input name="desa" placeholder="Desa" class="block w-full" :value="$profile->desa ?? ''" />
+                                                            <x-text-input name="kecamatan" placeholder="Kecamatan" class="block w-full" :value="$profile->kecamatan ?? ''" />
+                                                        </div>
+                                                        <x-text-input name="kabupaten" placeholder="Kabupaten" class="block w-full" :value="$profile->kabupaten ?? ''" />
                                                     </div>
                                                 </div>
-                                            </div>
+
+                                            </div> {{-- End Kolom Kiri --}}
+
+                                            {{-- KOLOM KANAN: DOKUMEN & BUKTI (BARU) --}}
+                                            <div class="space-y-6">
+                                                
+                                                {{-- 1. Bukti Pembayaran --}}
+                                                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                                    <h3 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                                        Bukti Pembayaran
+                                                    </h3>
+                                                    
+                                                    @if($reg->bukti_pembayaran)
+                                                        <div class="relative group rounded-lg overflow-hidden border border-gray-300 shadow-sm bg-white">
+                                                            <img src="{{ asset('storage/' . $reg->bukti_pembayaran) }}" alt="Bukti Transfer" class="w-full h-48 object-cover object-top transition duration-300 group-hover:opacity-90">
+                                                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/30">
+                                                                <a href="{{ asset('storage/' . $reg->bukti_pembayaran) }}" target="_blank" class="px-4 py-2 bg-white text-gray-800 text-xs font-bold rounded-full shadow-lg hover:bg-gray-100">
+                                                                    Lihat Ukuran Penuh
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        <p class="text-xs text-center text-gray-400 mt-2">Klik gambar untuk memperbesar</p>
+                                                    @else
+                                                        <div class="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-gray-400">
+                                                            <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                            <span class="text-xs">Tidak ada bukti pembayaran</span>
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                {{-- 2. List Dokumen Persyaratan --}}
+                                                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                                    <h3 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center">
+                                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                        Berkas Persyaratan
+                                                    </h3>
+
+                                                    @if(!empty($reg->data_dokumen))
+                                                        <div class="space-y-2">
+                                                            @foreach($reg->data_dokumen as $namaDoc => $path)
+                                                                <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-emerald-400 transition shadow-sm group">
+                                                                    <div class="flex items-center overflow-hidden">
+                                                                        <div class="flex-shrink-0 w-8 h-8 bg-emerald-100 text-emerald-600 rounded flex items-center justify-center mr-3">
+                                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                                                        </div>
+                                                                        <div class="truncate">
+                                                                            <p class="text-sm font-medium text-gray-700 truncate" title="{{ $namaDoc }}">{{ $namaDoc }}</p>
+                                                                            <p class="text-[10px] text-gray-400">Terupload</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <a href="{{ asset('storage/' . $path) }}" target="_blank" class="flex-shrink-0 ml-2 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-md transition duration-200">
+                                                                        Buka
+                                                                    </a>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="text-center py-6 text-gray-400 bg-white border border-dashed border-gray-300 rounded-lg">
+                                                            <p class="text-xs italic">Belum ada berkas yang diunggah</p>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                
+                                                {{-- 3. Ukuran Baju --}}
+                                                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 flex justify-between items-center">
+                                                    <span class="text-sm font-bold text-gray-700">Ukuran Baju</span>
+                                                    <span class="px-3 py-1 bg-gray-200 text-gray-800 font-bold rounded text-sm">{{ $reg->ukuran_baju ?? '-' }}</span>
+                                                </div>
+
+                                            </div> {{-- End Kolom Kanan --}}
+
                                         </div>
                                     </div>
 
                                     <div class="mt-6 flex justify-end pt-4 border-t border-gray-100 gap-3">
                                         <x-secondary-button x-on:click="$dispatch('close')">Batal</x-secondary-button>
-                                        <x-primary-button class="bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-800">Simpan Perubahan</x-primary-button>
+                                        <x-primary-button class="bg-emerald-600 hover:bg-emerald-700 focus:bg-emerald-700 active:bg-emerald-800">
+                                            Simpan Perubahan
+                                        </x-primary-button>
                                     </div>
                                 </form>
                             </x-modal>
@@ -339,6 +408,7 @@
         </div>
     </div>
 
+    {{-- MODAL TAMBAH PESERTA (TETAP SAMA) --}}
     <x-modal name="add-participant-modal" focusable>
         <form method="POST" action="{{ route('admin.events.participants.store', $event->id) }}" class="p-6">
             @csrf
@@ -447,7 +517,6 @@
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* Custom Scrollbar untuk Modal */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
